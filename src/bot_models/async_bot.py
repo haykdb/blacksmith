@@ -2,12 +2,12 @@
 
 import asyncio
 import time
-from configs import config
-from operations.spread_model import SpreadModel
-from operations.order_manager import OrderManager
-from operations.position_manager import PositionManager
-from operations.history_logger import HistoryLogger
-from operations.margin_trader import SpotTrader
+from src.configs import config
+from src.operations.spread_model import SpreadModel
+from src.operations.order_manager import OrderManager
+from src.operations.position_manager import PositionManager
+from src.operations.history_logger import HistoryLogger
+from src.operations.margin_trader import SpotTrader
 from datetime import date
 from loguru import logger
 

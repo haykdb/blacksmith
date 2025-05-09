@@ -2,11 +2,11 @@
 
 from binance.client import Client
 import multiprocessing as mp
-from configs import config
-from bot_models.async_bot import Bot
+from src.configs import config
+from src.bot_models.async_bot import Bot
 from loguru import logger
 from datetime import date
-from operations.price_cache import PriceCache
+from src.operations.price_cache import PriceCache
 
 LOGGER = f"/Users/admin/Documents/BinanceBots/{date.today()}.log"
 logger.add(LOGGER)

@@ -8,6 +8,9 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.9,<4.0"
 
+[project.scripts]
+bots = 'src.bot_models.async_main:run_system'
+
 [tool.poetry]
 packages = [
     { include = "src/bot_models" }
