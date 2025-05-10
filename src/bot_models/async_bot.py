@@ -1,23 +1,27 @@
-# bot.py
-
 import asyncio
 import time
-from src.configs import config
-from src.operations.spread_model import SpreadModel
-from src.operations.order_manager import OrderManager
-from src.operations.position_manager import PositionManager
-from src.operations.history_logger import HistoryLogger
-from src.operations.margin_trader import SpotTrader
+import configs.config as config
+from operations.spread_model import SpreadModel
+from operations.order_manager import OrderManager
+from operations.position_manager import PositionManager
+from operations.history_logger import HistoryLogger
+from operations.margin_trader import SpotTrader
+from operations.notifier import send_telegram_message
 from datetime import date
 from loguru import logger
 
-LOGGER = "/Users/admin/Documents/BinanceBots/{t:%Y-%m-%d}_{symbol}.log"
+LOGGER = "/Users/admin/Documents/BinanceBots/Logs/{t:%Y-%m-%d}_{symbol}.log"
 
 
 # TODO move all actions between signal and position building
 class Bot:
     def __init__(
-        self, spot_client, futures_client, symbol: str, status_store=None, price_cache=None
+        self,
+        spot_client,
+        futures_client,
+        symbol: str,
+        status_store=None,
+        price_cache=None,
     ):
         self.symbol = symbol
         self.asset = symbol.replace("USDT", "")
@@ -25,7 +29,9 @@ class Bot:
         self.futures = futures_client
         self.price_cache = price_cache
 
-        self.order_manager = OrderManager(spot_client=spot_client, futures_client=futures_client)
+        self.order_manager = OrderManager(
+            spot_client=spot_client, futures_client=futures_client
+        )
         self.margin_trader = SpotTrader(spot_client=spot_client, config=config)
         self.position_manager = PositionManager(symbol=symbol, config=config)
         self.logger = HistoryLogger(symbol=symbol, config=config)
@@ -41,6 +47,8 @@ class Bot:
 
         self.last_trade_time = 0
         self.min_trade_interval = config.TRADE_SLEEP  # seconds
+
+        # self.entry_timestamp = None
 
         logger.add(LOGGER.format(t=date.today(), symbol=self.symbol))
 
@@ -119,7 +127,7 @@ class Bot:
             try:
                 spot_ask = None
                 fut_bid = None
-                cond = True
+                entry_cond = True
 
                 if config.USE_WEBSOCKET:
                     spot = self.price_cache.get_mid("spot")
@@ -133,42 +141,45 @@ class Bot:
                     continue
 
                 spread = spot - fut
-                z = self.model.zscore(spread)
                 signal = self.model.get_signal(spread)
-                economic_signal = self.model.get_economic_signal(spot, fut)
-                if spot_ask and fut_bid:
-                    cond = self.model.get_entry_signal(spot_ask, fut_bid)
-                    logger.debug(cond)
-                logger.info(f"[{self.symbol}] Z-score: {z:.2f}")
 
                 # Respect directional constraints
                 if signal == -1 and not config.ALLOW_SHORT_SPREAD:
-                    logger.info(
-                        f"[STRATEGY - {self.symbol}] Short signal skipped (short spreads disabled)"
-                    )
                     signal = 0
 
                 if self.position_manager.is_open and signal == 0:
-                    logger.debug(
-                        f"[ACTION - {self.symbol}] Closing open position due to neutral signal."
-                    )
-                    await self.close_position()
+                    if config.USE_BOOK_BASED_EXIT:
+                        exit_cond = self.should_exit_long()
+                        if exit_cond:
+                            await self.close_position()
+                    else:
+                        await self.close_position()
+
+                economic_signal = self.model.get_economic_signal(spot, fut)
+                if config.USE_WEBSOCKET:
+                    entry_cond = self.should_enter_long()
+                elif spot_ask and fut_bid:
+                    entry_cond = self.model.get_entry_signal(spot_ask, fut_bid)
 
                 if (
                     not self.position_manager.is_open
                     and signal in (1, -1)
                     and economic_signal
-                    and cond
+                    and entry_cond
                 ):
                     now = time.time()
                     if (now - self.last_trade_time) > self.min_trade_interval:
-                        logger.debug(f"[ACTION - {self.symbol}] Opening new position.")
                         await self.open_position(signal, spot, fut)
                         self.last_trade_time = now
 
             except Exception as e:
                 logger.error(f"[{self.symbol}] Signal loop error: {e}")
-            await asyncio.sleep(self.min_trade_interval)
+
+            try:
+                await asyncio.wait_for(self.price_cache.updated_event.wait(), timeout=2)
+                self.price_cache.updated_event.clear()
+            except asyncio.TimeoutError:
+                pass
 
     async def open_position(self, direction: int, spot_price, fut_price):
         try:
@@ -211,9 +222,9 @@ class Bot:
 
     async def close_position(self):
         try:
-            side = self.position_manager.side
+            # side = self.position_manager.side
 
-            logger.debug(f"[{self.symbol}] Closing {side} position...")
+            # logger.debug(f"[{self.symbol}] Closing {side} position...")
 
             tasks = [
                 self.order_manager.async_close_spot_position(self.symbol),
@@ -225,7 +236,16 @@ class Bot:
                 spot_price, fut_price = await self.fetch_prices()
                 result = self.position_manager.close(spot_price, fut_price)
                 self.logger.log_event({"Action": "CLOSE", **result})
-                logger.debug(f"[{self.symbol}] Position closed.")
+                if config.TELEGRAM_ENABLED:
+                    msg = (
+                        f"✅ *Trade Closed* — {self.symbol}\n"
+                        f"Side: `{result['Side']}`\n"
+                        f"Size: `{result['Size']}`\n"
+                        f"PnL: `${result['PnL']:.2f}`\n"
+                        f"Z: `{result['Z']:.2f}`"
+                    )
+                    send_telegram_message(msg, config)
+                # logger.debug(f"[{self.symbol}] Position closed.")
             else:
                 logger.warning(f"[{self.symbol}] Close failed.")
         except Exception as e:
@@ -240,3 +260,22 @@ class Bot:
         while not (liquidate_spot and liquidate_futures):
             liquidate_spot = self.order_manager.close_position(self.symbol, False)
             liquidate_futures = self.order_manager.close_position(self.symbol, True)
+
+    def should_exit_long(self) -> bool:
+        now = time.time()
+        time_in_trade = (
+            now - self.entry_timestamp if hasattr(self, "entry_timestamp") else 0
+        )
+
+        spot_bid = self.price_cache.spot.get("bid")
+        fut_ask = self.price_cache.futures.get("ask")
+
+        exit_executable = fut_ask and spot_bid and float(fut_ask) < float(spot_bid)
+        timeout = time_in_trade > config.EXIT_TIMEOUT_SECONDS
+
+        return exit_executable or timeout
+
+    def should_enter_long(self) -> bool:
+        spot_ask = self.price_cache.spot.get("ask")
+        fut_bid = self.price_cache.futures.get("bid")
+        return fut_bid > spot_ask

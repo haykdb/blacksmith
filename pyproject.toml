@@ -9,12 +9,12 @@ readme = "README.md"
 requires-python = ">=3.9,<4.0"
 
 [project.scripts]
-bots = 'src.bot_models.async_main:run_system'
+bots = 'bot_models.async_main:run_system'
 
 [tool.poetry]
-packages = [
-    { include = "src/bot_models" }
-]
+packages = [{ include = "bot_models", from = "src" },
+           { include = "operations", from = "src" },
+           { include = "configs", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.13.0"
@@ -30,6 +30,9 @@ black="^25.1.0"
 mypy="^1.15.0"
 pylint="^3.3.0"
 loguru="^0.7.0"
+
+[tool.mypy]
+ignore_missing_imports = true
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

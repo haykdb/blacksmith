@@ -1,4 +1,3 @@
-# spread_model.py
 from typing import Tuple, List, Optional
 import numpy as np
 from loguru import logger
@@ -70,7 +69,9 @@ class SpreadModel:
         mean, _ = self.stats()
         exp_pf = self.calculate_expected_profit(spread, mean)
         exp_tc = self.calculate_expected_tc(spot, futures)
-        logger.info(f"[SPREAD {self.symbol}] Spread: {spread:2f}, Mean: {mean:2f}, PF: {exp_pf:2f}, TC: {exp_tc:2f}")
+        # logger.info(
+        #     f"[SPREAD {self.symbol}] Spread: {spread:2f}, Mean: {mean:2f}, PF: {exp_pf:2f}, TC: {exp_tc:2f}"
+        # )
         return bool(exp_pf >= exp_tc)
 
     @staticmethod

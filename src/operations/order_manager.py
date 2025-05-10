@@ -1,10 +1,9 @@
-# order_manager.py
 import asyncio
 from loguru import logger
 import time
 import math
-from binance.exceptions import BinanceAPIException # type: ignore[import-untyped]
-from binance.client import Client # type: ignore[import-untyped]
+from binance.exceptions import BinanceAPIException  # type: ignore[import-untyped]
+from binance.client import Client  # type: ignore[import-untyped]
 
 
 class OrderManager:

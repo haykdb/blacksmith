@@ -1,14 +1,12 @@
-# main.py
-
 from binance.client import Client
 import multiprocessing as mp
-from src.configs import config
-from src.bot_models.async_bot import Bot
+import configs.config as config
+from bot_models import Bot
 from loguru import logger
 from datetime import date
-from src.operations.price_cache import PriceCache
+from operations.price_cache import PriceCache
 
-LOGGER = f"/Users/admin/Documents/BinanceBots/{date.today()}.log"
+LOGGER = f"/Users/admin/Documents/BinanceBots/Logs/{date.today()}.log"
 logger.add(LOGGER)
 
 # === CONNECT ===
@@ -39,16 +37,21 @@ def run_bot(symbol):
         futures_client = LIVE_CLIENT
 
     logger.debug(f"[INIT] Starting bot for {symbol}")
-    bot = Bot(spot_client, futures_client, symbol)  # , price_cache=price_cache)
-    bot.liquidate_all_positions()
-    asyncio.run(bot.start())
-    # async def launch():
-    #     await asyncio.gather(
-    #         price_cache.start(),
-    #         bot.start()
-    #     )
-    #
-    # asyncio.run(launch())
+
+    if config.USE_WEBSOCKET:
+        price_cache = PriceCache(symbol)
+        bot = Bot(spot_client, futures_client, symbol, price_cache=price_cache)
+        bot.liquidate_all_positions()
+
+        async def launch():
+            await asyncio.gather(price_cache.start(), bot.start())
+
+        asyncio.run(launch())
+    else:
+        bot = Bot(spot_client, futures_client, symbol)
+        bot.liquidate_all_positions()
+        asyncio.run(bot.start())
+
 
 def run_system():
     mp.set_start_method("spawn")
@@ -69,6 +72,7 @@ def run_system():
         logger.error("[MAIN] Gracefully shutting down...")
         for p in processes:
             p.terminate()
+
 
 if __name__ == "__main__":
     run_system()

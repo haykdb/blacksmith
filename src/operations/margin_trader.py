@@ -1,13 +1,12 @@
-# margin_trader.py
 from loguru import logger
-from binance.exceptions import BinanceAPIException # type: ignore[import-untyped]
+from binance.exceptions import BinanceAPIException  # type: ignore[import-untyped]
 import time
-from binance.client import Client # type: ignore[import-untyped]
+from binance.client import Client  # type: ignore[import-untyped]
 
 
 class SpotTrader:
 
-    def __init__(self, spot_client: type(Client), config):
+    def __init__(self, spot_client: type[Client], config):
         self.spot_client = spot_client
         self.config = config
 
@@ -56,7 +55,12 @@ class SpotTrader:
         logger.info(f"[SPOT] Sold {quantity} {symbol}.")
 
     def safe_spot_order(
-        self, symbol: str, side: str, quantity: float, max_retries: int = 3, type: str = "MARKET"
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
+        max_retries: int = 3,
+        type: str = "MARKET",
     ):
         attempt = 0
 
@@ -86,7 +90,12 @@ class SpotTrader:
         return False
 
     def safe_margin_order(
-        self, symbol: str, side: str, quantity: float, max_retries: int = 3, type: str = "MARKET"
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
+        max_retries: int = 3,
+        type: str = "MARKET",
     ):
         attempt = 0
 

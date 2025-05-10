@@ -1,5 +1,3 @@
-# position_manager.py
-
 from datetime import datetime, timezone
 from typing import Union, Dict
 from loguru import logger
@@ -45,9 +43,7 @@ class PositionManager:
         else:
             raise Exception("Invalid side.")
 
-        estimated_fee_rate = (
-            self.config.TC
-        )
+        estimated_fee_rate = self.config.TC
         notional = (
             self.spot_entry_price
             + spot_exit_price
@@ -58,9 +54,11 @@ class PositionManager:
         total_net_pnl = spot_pnl + futures_pnl - fees
 
         if not self.entry_time is None:
-            holding_minutes = round((exit_time - self.entry_time).total_seconds() / 60, 2)
+            holding_minutes = round(
+                (exit_time - self.entry_time).total_seconds() / 60, 2
+            )
         else:
-            holding_minutes = "FALSE"
+            holding_minutes = 99999999
 
         result = {
             "Action": "CLOSE",
@@ -71,7 +69,11 @@ class PositionManager:
             "Spot Exit Price": round(spot_exit_price, 4),
             "Futures Entry Price": round(self.futures_entry_price, 4),
             "Futures Exit Price": round(futures_exit_price, 4),
-            "Entry Time": self.entry_time.strftime("%Y-%m-%d %H:%M:%S") if not self.entry_time is None else "00:00:00:FALSE",
+            "Entry Time": (
+                self.entry_time.strftime("%Y-%m-%d %H:%M:%S")
+                if not self.entry_time is None
+                else "00:00:00:FALSE"
+            ),
             "Exit Time": exit_time.strftime("%Y-%m-%d %H:%M:%S"),
             "Spot PnL (USD)": round(spot_pnl, 4),
             "Futures PnL (USD)": round(futures_pnl, 4),
