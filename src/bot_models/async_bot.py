@@ -171,6 +171,7 @@ class Bot:
                     if (now - self.last_trade_time) > self.min_trade_interval:
                         await self.open_position(signal, spot, fut)
                         self.last_trade_time = now
+                        self.entry_timestamp = now
 
             except Exception as e:
                 logger.error(f"[{self.symbol}] Signal loop error: {e}")
@@ -241,8 +242,8 @@ class Bot:
                         f"✅ *Trade Closed* — {self.symbol}\n"
                         f"Side: `{result['Side']}`\n"
                         f"Size: `{result['Size']}`\n"
-                        f"PnL: `${result['PnL']:.2f}`\n"
-                        f"Z: `{result['Z']:.2f}`"
+                        f"PnL: `${result['Total Net PnL (USD)']:.4f}`\n"
+                        f"Holding Duration (minutes): `{result['Holding Duration (minutes)']:.2f}`"
                     )
                     send_telegram_message(msg, config)
                 # logger.debug(f"[{self.symbol}] Position closed.")
@@ -278,4 +279,4 @@ class Bot:
     def should_enter_long(self) -> bool:
         spot_ask = self.price_cache.spot.get("ask")
         fut_bid = self.price_cache.futures.get("bid")
-        return fut_bid > spot_ask
+        return fut_bid and spot_ask and float(fut_bid) > float(spot_ask)
