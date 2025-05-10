@@ -14,16 +14,14 @@ FUTURES_API_SECRET = "755d61406a815b5ef7030b1bdbdf14c2f676e8ae28dfbe487fb73991bb
 SYMBOLS = [
     "FLMUSDT",
     "BIOUSDT",
-    "ZKUSDT",
     "ATAUSDT",
-    "HIFIUSDT",
-    "XLMUSDT",
-    "LINKUSDT",
-    "ATOMUSDT",
-    "DOTUSDT",
-    "LTCUSDT",
-    "AVAXUSDT",
-    "NEARUSDT",
+    "ALPACAUSDT",
+    "DOGEUSDT",
+    "WIFUSDT",
+    "TRUMPUSDT",
+    "ARBUSDT",
+    "BNBUSDT",
+    "ACTUSDT"
 ]
 CAPITAL_PER_TRADE = 15  # USD
 USE_TESTNET = False
@@ -52,4 +50,4 @@ TELEGRAM_CHAT_ID = 1721711870
 
 # Exit Timeout
 USE_BOOK_BASED_EXIT = True
-EXIT_TIMEOUT_SECONDS = 600  # 10 minutes fallback
+EXIT_TIMEOUT_SECONDS = 900  # 10 minutes fallback
