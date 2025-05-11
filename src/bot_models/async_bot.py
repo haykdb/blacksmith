@@ -156,7 +156,6 @@ class Bot:
                     else:
                         await self.close_position()
 
-
                 if config.USE_WEBSOCKET:
                     spot_ask = self.price_cache.spot.get("ask")
                     fut_bid = self.price_cache.futures.get("bid")
@@ -212,9 +211,9 @@ class Bot:
                         "Action": "OPEN",
                         "Side": side,
                         "Symbol": self.symbol,
-                        "Size": qty,
-                        "Futures Entry Price": fut_price,
-                        "Spot Entry Price": spot_price,
+                        "Size": str(qty),
+                        "Futures Entry Price": str(fut_price),
+                        "Spot Entry Price": str(spot_price),
                     }
                 )
             else:
@@ -276,11 +275,15 @@ class Bot:
         spot_bid = self.price_cache.spot.get("bid")
         fut_ask = self.price_cache.futures.get("ask")
 
-        exit_executable = fut_ask and spot_bid and self.position_manager.calc_total_pnl(spot_bid, fut_ask) >= 0
+        exit_executable = (
+            fut_ask
+            and spot_bid
+            and self.position_manager.calc_total_pnl(spot_bid, fut_ask) >= 0
+        )
         timeout = time_in_trade > config.EXIT_TIMEOUT_SECONDS
 
         return exit_executable or timeout
 
     @staticmethod
     def should_enter_long(spot_ask: float, fut_bid: float) -> bool:
-        return fut_bid and spot_ask and float(fut_bid) > float(spot_ask)
+        return fut_bid > spot_ask
