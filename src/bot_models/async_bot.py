@@ -128,6 +128,7 @@ class Bot:
                 spot_ask = None
                 fut_bid = None
                 entry_cond = True
+                economic_signal = True
 
                 if config.USE_WEBSOCKET:
                     spot = self.price_cache.get_mid("spot")
@@ -155,10 +156,14 @@ class Bot:
                     else:
                         await self.close_position()
 
-                economic_signal = self.model.get_economic_signal(spot, fut)
+
                 if config.USE_WEBSOCKET:
-                    entry_cond = self.should_enter_long()
+                    spot_ask = self.price_cache.spot.get("ask")
+                    fut_bid = self.price_cache.futures.get("bid")
+                    economic_signal = self.model.get_economic_signal(spot_ask, fut_bid)
+                    entry_cond = self.should_enter_long(spot_ask, fut_bid)
                 elif spot_ask and fut_bid:
+                    economic_signal = self.model.get_economic_signal(spot_ask, fut_bid)
                     entry_cond = self.model.get_entry_signal(spot_ask, fut_bid)
 
                 if (
@@ -169,7 +174,7 @@ class Bot:
                 ):
                     now = time.time()
                     if (now - self.last_trade_time) > self.min_trade_interval:
-                        await self.open_position(signal, spot, fut)
+                        await self.open_position(signal, spot_ask, fut_bid)
                         self.last_trade_time = now
                         self.entry_timestamp = now
 
@@ -182,7 +187,7 @@ class Bot:
             except asyncio.TimeoutError:
                 pass
 
-    async def open_position(self, direction: int, spot_price, fut_price):
+    async def open_position(self, direction: int, spot_price: float, fut_price: float):
         try:
             qty = round(self.capital / fut_price, 6)
             side = "LONG" if direction == 1 else "SHORT"
@@ -271,12 +276,11 @@ class Bot:
         spot_bid = self.price_cache.spot.get("bid")
         fut_ask = self.price_cache.futures.get("ask")
 
-        exit_executable = fut_ask and spot_bid and float(fut_ask) < float(spot_bid)
+        exit_executable = fut_ask and spot_bid and self.position_manager.calc_total_pnl(spot_bid, fut_ask) >= 0
         timeout = time_in_trade > config.EXIT_TIMEOUT_SECONDS
 
         return exit_executable or timeout
 
-    def should_enter_long(self) -> bool:
-        spot_ask = self.price_cache.spot.get("ask")
-        fut_bid = self.price_cache.futures.get("bid")
+    @staticmethod
+    def should_enter_long(spot_ask: float, fut_bid: float) -> bool:
         return fut_bid and spot_ask and float(fut_bid) > float(spot_ask)

@@ -4,11 +4,13 @@ import pandas as pd
 VOLUME_THRESHOLD = 50_000_000  # $50M
 EXCLUDED = {"USDCUSDT", "BUSDUSDT", "TUSDUSDT", "BTCUSDT", "ETHUSDT"}
 
+
 def get_funding_rates():
     url = "https://fapi.binance.com/fapi/v1/premiumIndex"
     response = requests.get(url)
     data = response.json()
     return {item["symbol"]: float(item["lastFundingRate"]) for item in data}
+
 
 def get_top_symbols(limit=20):
     url = "https://api.binance.com/api/v3/ticker/24hr"
@@ -34,10 +36,15 @@ def get_top_symbols(limit=20):
     data["fundingRate"] = data["symbol"].map(funding).fillna(0)
 
     # Score = liquidity × volatility × (1 + |funding| × 10)
-    data["score"] = data["quoteVolume"] * data["volatility_pct"] * (1 + abs(data["fundingRate"]) * 10)
+    data["score"] = (
+        data["quoteVolume"]
+        * data["volatility_pct"]
+        * (1 + abs(data["fundingRate"]) * 10)
+    )
 
     top = data.sort_values("score", ascending=False).head(limit)
     return top[["symbol", "quoteVolume", "volatility_pct", "fundingRate", "score"]]
+
 
 if __name__ == "__main__":
     top_symbols = get_top_symbols()

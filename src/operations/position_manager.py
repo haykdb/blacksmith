@@ -96,7 +96,9 @@ class PositionManager:
                 f"Trying to calculate spot closing pnl when position is closed."
             )
         if self.side == "LONG":
-            spot_pnl = (exit_spot_price - self.spot_entry_price) * self.size
+            spot_pnl = (exit_spot_price - self.spot_entry_price) * self.size - (
+                exit_spot_price + self.spot_entry_price
+            ) * self.config.TC * self.size
         else:
             spot_pnl = (self.spot_entry_price - exit_spot_price) * self.size
         return spot_pnl
@@ -107,7 +109,11 @@ class PositionManager:
                 f"Trying to calculate futures closing pnl when position is closed."
             )
         if self.side == "LONG":
-            futures_pnl = (self.futures_entry_price - exit_futures_price) * self.size
+            futures_pnl = (
+                self.futures_entry_price - exit_futures_price
+            ) * self.size - (
+                exit_futures_price + self.futures_entry_price
+            ) * self.config.TC * self.size
         else:
             futures_pnl = (exit_futures_price - self.futures_entry_price) * self.size
         return futures_pnl
