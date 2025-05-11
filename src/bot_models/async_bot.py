@@ -157,8 +157,8 @@ class Bot:
                         await self.close_position()
 
                 if config.USE_WEBSOCKET:
-                    spot_ask = self.price_cache.spot.get("ask")
-                    fut_bid = self.price_cache.futures.get("bid")
+                    spot_ask = float(self.price_cache.spot.get("ask"))
+                    fut_bid = float(self.price_cache.futures.get("bid"))
                     economic_signal = self.model.get_economic_signal(spot_ask, fut_bid)
                     entry_cond = self.should_enter_long(spot_ask, fut_bid)
                 elif spot_ask and fut_bid:
@@ -278,7 +278,7 @@ class Bot:
         exit_executable = (
             fut_ask
             and spot_bid
-            and self.position_manager.calc_total_pnl(spot_bid, fut_ask) >= 0
+            and self.position_manager.calc_total_pnl(float(spot_bid), float(fut_ask)) >= 0
         )
         timeout = time_in_trade > config.EXIT_TIMEOUT_SECONDS
 
