@@ -65,7 +65,7 @@ class OrderManager:
                 return True
             side = "SELL" if pos_amt > 0 else "BUY"
             quantity = abs(pos_amt)
-            logger.info(f"[FUTURES] Closing {side} {quantity} {symbol}")
+            # logger.info(f"[FUTURES] Closing {side} {quantity} {symbol}")
             return self._safe_order(
                 symbol, side, quantity, is_futures=True, reduce_only=True
             )
@@ -90,7 +90,7 @@ class OrderManager:
             if quantity <= minQty or spot_price * quantity <= minNotional:
                 logger.debug(f"[SPOT] No spot balance for {asset} to close.")
                 return True
-            logger.info(f"[SPOT] Closing spot position: SELL {quantity} {symbol}")
+            # logger.info(f"[SPOT] Closing spot position: SELL {quantity} {symbol}")
             return self._safe_order(symbol, "SELL", quantity, is_futures=False)
 
         except Exception as e:

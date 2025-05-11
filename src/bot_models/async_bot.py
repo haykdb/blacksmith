@@ -46,6 +46,7 @@ class Bot:
         self.status_store = status_store
 
         self.last_trade_time = 0
+        self.last_entry_time = 0
         self.min_trade_interval = config.TRADE_SLEEP  # seconds
 
         # self.entry_timestamp = None
@@ -149,11 +150,15 @@ class Bot:
                     signal = 0
 
                 if self.position_manager.is_open and signal == 0:
-                    if config.USE_BOOK_BASED_EXIT:
+                    now = time.time()
+                    if (
+                        config.USE_BOOK_BASED_EXIT
+                        and (now - self.last_entry_time) > config.MIN_HOLDING_SECONDS
+                    ):
                         exit_cond = self.should_exit_long()
                         if exit_cond:
                             await self.close_position()
-                    else:
+                    elif (now - self.last_entry_time) > config.MIN_HOLDING_SECONDS:
                         await self.close_position()
 
                 if config.USE_WEBSOCKET:
@@ -176,6 +181,7 @@ class Bot:
                         await self.open_position(signal, spot_ask, fut_bid)
                         self.last_trade_time = now
                         self.entry_timestamp = now
+                        self.last_entry_time = now
 
             except Exception as e:
                 logger.error(f"[{self.symbol}] Signal loop error: {e}")
@@ -278,7 +284,8 @@ class Bot:
         exit_executable = (
             fut_ask
             and spot_bid
-            and self.position_manager.calc_total_pnl(float(spot_bid), float(fut_ask)) >= 0
+            and self.position_manager.calc_total_pnl(float(spot_bid), float(fut_ask))
+            >= 0
         )
         timeout = time_in_trade > config.EXIT_TIMEOUT_SECONDS
 
