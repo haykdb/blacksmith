@@ -5,16 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="Poetry (blacksmith)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.13 virtualenv at C:\Users\User2\PycharmProjects\blacksmith\.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-  </component>
-  <component name="PyNamespacePackagesService">
-    <option name="namespacePackageFolders">
-      <list>
-        <option value="$MODULE_DIR$/src/bot_models" />
-        <option value="$MODULE_DIR$/src/operations" />
-        <option value="$MODULE_DIR$/src/configs" />
-      </list>
-    </option>
   </component>
 </module>

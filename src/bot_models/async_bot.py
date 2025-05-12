@@ -12,7 +12,7 @@ from loguru import logger
 
 LOGGER = "/Users/admin/Documents/BinanceBots/Logs/{t:%Y-%m-%d}_{symbol}.log"
 
-
+# TODO add entry/expiration for price_cache to avoid slippage with new spreads
 # TODO move all actions between signal and position building
 class Bot:
     def __init__(
@@ -285,7 +285,7 @@ class Bot:
             fut_ask
             and spot_bid
             and self.position_manager.calc_total_pnl(float(spot_bid), float(fut_ask))
-            >= 0
+            > 0
         )
         timeout = time_in_trade > config.EXIT_TIMEOUT_SECONDS
 
