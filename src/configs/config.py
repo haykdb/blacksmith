@@ -12,15 +12,33 @@ FUTURES_API_SECRET = "755d61406a815b5ef7030b1bdbdf14c2f676e8ae28dfbe487fb73991bb
 
 # Symbol and Trading
 SYMBOLS = [
-    "FLMUSDT",
-    "BIOUSDT",
-    "ATAUSDT",
-    "DOGEUSDT",
-    "WIFUSDT",
-    "TRUMPUSDT",
-    "ARBUSDT",
-    "BNBUSDT",
-    "ACTUSDT",
+    # "SYSUSDT",
+    # "CHESSUSDT",
+    "HUMAUSDT",
+    # "BANANAS31USDT",
+    # "MASKUSDT",
+    # "COOKIEUSDT",
+    # "FLMUSDT",
+    # "BIOUSDT",
+    # "ATAUSDT",
+    # "DOGEUSDT",
+    # "WIFUSDT",
+    # "TRUMPUSDT",
+    # "ARBUSDT",
+    # "ACTUSDT",
+    # "DOGEUSDT",
+    # "SUIUSDT",
+    # "NXPCUSDT",
+    # "AAVEUSDT",
+    # "WLDUSDT",
+    # "NEIROUSDT",
+    # "TRXUSDT",
+    # "AWEUSDT",
+    # "CVCUSDT",
+    # "OGUSDT",
+    # "ZKJUSDT",
+    # "ASRUSDT",
+    # "SXTUSDT",
 ]
 CAPITAL_PER_TRADE = 10  # USD
 USE_TESTNET = False
@@ -32,10 +50,18 @@ STRATEGY_LOOKBACK = 120  # in minutes
 STRATEGY_Z_ENTRY = 1.5
 STRATEGY_Z_EXIT = 0.5
 TRADE_SLEEP = 0.2
-SPREAD_MODEL_SLEEP = 30
-TC = 0.00075
+SPREAD_MODEL_SLEEP = 5
+TC = 0.00065
 USE_WEBSOCKET = True
 USE_MID_PRICE = False
+USE_KALMAN = True
+
+# --- Kalman tuning ----------------------------------
+r = 1e-8
+KALMAN_Q_BASE = 1e3 * r  # minimum process variance
+KALMAN_Q_BETA = 2e-3  # adds beta*|residual|
+KALMAN_R = r  # measurement variance
+
 
 # Logging
 TRADE_LOG_PATH = (

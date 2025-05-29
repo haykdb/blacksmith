@@ -1,14 +1,53 @@
-from typing import Tuple, List, Optional
+from typing import Tuple
 import numpy as np
-from loguru import logger
+from numba import njit
+
+
+@njit
+def compute_stats(arr: np.ndarray) -> Tuple[float, float]:
+    mean = np.mean(arr)
+    std = np.std(arr)
+    return mean, std
+
+
+@njit
+def compute_zscore(current: float, mean: float, std: float) -> float:
+    if std == 0:
+        return 0.0
+    return (current - mean) / std
+
+
+@njit
+def compute_expected_profit(spread: float, mean: float) -> float:
+    return abs(spread - mean)
+
+
+@njit
+def check_signal(
+    z: float, entry_z: float, exit_z: float, last_signal: int, allow_short: bool
+) -> int:
+    if last_signal == 1 and z >= exit_z:
+        return 0
+    elif last_signal == -1 and z <= -exit_z:
+        return 0
+
+    if abs(z) < exit_z:
+        return 0
+    elif z > entry_z and allow_short:
+        return -1
+    elif z < -entry_z:
+        return 1
+    return 2
 
 
 class SpreadModel:
     def __init__(self, symbol: str, config, lookback: int = 120):
-        self.lookback = lookback
         self.symbol = symbol
-        self.spread_history: List[float] = []
-        self.entry_signal_m1: Optional[int] = None
+        self.lookback = lookback
+        self.spread_history = np.zeros(lookback, dtype=np.float64)
+        self.ptr = 0
+        self.filled = False
+        self.entry_signal = 0
         self.allow_short = False
         self.entry_z = 1.5
         self.exit_z = 0.5
@@ -16,63 +55,45 @@ class SpreadModel:
 
     def update(self, spot_price: float, futures_price: float):
         spread = spot_price - futures_price
-        self.spread_history.append(spread)
-        self.spread_history = self.spread_history[-self.lookback :]
+        self.spread_history[self.ptr] = spread
+        self.ptr = (self.ptr + 1) % self.lookback
+        if self.ptr == 0:
+            self.filled = True
 
     def ready(self) -> bool:
-        return len(self.spread_history) >= self.lookback
+        return self.filled
 
-    def stats(self) -> Tuple:
+    def get_array(self) -> np.ndarray:
+        if self.filled:
+            return self.spread_history
+        return self.spread_history[: self.ptr]
+
+    def get_signal(self, spot: float, fut: float) -> int:
         if not self.ready():
-            return None, None
-        mean = np.mean(self.spread_history)
-        std = np.std(self.spread_history)
-        return mean, std
-
-    def zscore(self, current_spread: float) -> float:
-        mean, std = self.stats()
-        if std is None or std == 0:
             return 0
-        return (current_spread - mean) / std
-
-    def get_signal(self, spread: float):
-
-        z = self.zscore(spread)
-        # logger.info(f"[STRATEGY] {self.symbol} Z-score: {round(z, 2)}")
-
-        if not self.entry_signal_m1 is None:
-            if self.entry_signal_m1 == 1 and z >= self.exit_z:
-                return 0
-            elif self.entry_signal_m1 == -1 and z <= -self.exit_z:
-                return 0
-
-        if abs(z) < self.exit_z:
-            return 0
-        elif z > self.entry_z and self.allow_short:
-            self.entry_signal_m1 = -1
-            return -1
-        elif z < -self.entry_z:
-            self.entry_signal_m1 = 1
-            return 1
-        return 2
+        spread = spot - fut
+        arr = self.get_array()
+        mean, std = compute_stats(arr)
+        z = compute_zscore(spread, mean, std)
+        signal = check_signal(
+            z, self.entry_z, self.exit_z, self.entry_signal, self.allow_short
+        )
+        if signal in (-1, 1):
+            self.entry_signal = signal
+        return signal
 
     def calculate_expected_tc(self, spot: float, futures: float) -> float:
         return 2 * (spot * self.TC + futures * self.TC)
 
-    def calculate_expected_profit(self, spread: float, mean: float) -> float:
-        if len(self.spread_history) < self.lookback:
-            return 0.0
-        return abs(spread - mean)
-
     def get_economic_signal(self, spot: float, futures: float) -> bool:
+        if not self.ready():
+            return False
         spread = spot - futures
-        mean, _ = self.stats()
-        exp_pf = self.calculate_expected_profit(spread, mean)
-        exp_tc = self.calculate_expected_tc(spot, futures)
-        # logger.info(
-        #     f"[SPREAD {self.symbol}] Spread: {spread:2f}, Mean: {mean:2f}, PF: {exp_pf:2f}, TC: {exp_tc:2f}"
-        # )
-        return bool(exp_pf >= exp_tc)
+        arr = self.get_array()
+        mean, _ = compute_stats(arr)
+        expected_profit = compute_expected_profit(spread, mean)
+        expected_cost = self.calculate_expected_tc(spot, futures)
+        return expected_profit >= expected_cost
 
     @staticmethod
     def get_entry_signal(spot_ask: float, fut_bid: float) -> bool:
